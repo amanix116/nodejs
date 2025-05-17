@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CRUD Example</title>
+  <link rel="stylesheet" href="style.css">
+  
+</head>
+<body>
+
+<h2>Add User</h2>
+<form id="userForm">
+  <input type="text" name="name" placeholder="Name" required>
+  <input type="email" name="email" placeholder="Email" required>
+  <button type="submit">Add User</button>
+</form>
+
+<h2>Update User</h2>
+<form id="updateUserForm" style="display:none;">
+  <input type="text" id="updateName" placeholder="Name" required>
+  <input type="email" id="updateEmail" placeholder="Email" required>
+  <input type="hidden" id="updateId">
+  <button type="submit">Update User</button>
+</form>
+
+<div id="msg"></div>
+
+<h2>All Users</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Id</th>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="userTableBody"></tbody>
+</table>
+
+<script>
+
+//Display the data  from database
+function loadUsers() {
+  fetch('/users')
+    .then(res => res.json())
+    .then(users => {
+      const tbody = document.getElementById('userTableBody');
+      tbody.innerHTML = ''; // clear table
+      users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${user.id}</td>
+          <td>${user.name}</td>
+          <td>${user.email}</td>
+          <td>
+            <button onclick="deleteUser(${user.id})">Delete</button>
+            <button onclick="prepareUpdate(${user.id}, '${user.name}', '${user.email}')">Edit</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    })
+    .catch(err => console.error('Error fetching users:', err));
+}
+
+//deleting user from databbase
+function deleteUser(id) {
+  fetch(`/users/${id}`, { method: 'DELETE' })
+    .then(res => res.text())
+    .then(msg => {
+      document.getElementById('msg').innerText = msg;
+      loadUsers();
+    })
+    .catch(err => console.error('Error deleting user:', err));
+}
+
+document.getElementById('userForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  const data = {
+    name: formData.get('name'),
+    email: formData.get('email')
+  };
+  fetch('/users/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(res => res.text())
+  .then(msg => {
+    document.getElementById('msg').innerText = msg;
+    this.reset();
+    loadUsers();
+  })
+  .catch(err => console.error('Error adding user:', err));
+});
+
+function prepareUpdate(id, name, email) {
+  document.getElementById('updateId').value = id;
+  document.getElementById('updateName').value = name;
+  document.getElementById('updateEmail').value = email;
+  document.getElementById('updateUserForm').style.display = 'block';
+}
+
+document.getElementById('updateUserForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const id = document.getElementById('updateId').value;
+  updateUser(id);
+});
+ 
+//updateind user from database
+function updateUser(id) {
+  const name = document.getElementById('updateName').value;
+  const email = document.getElementById('updateEmail').value;
+  fetch(`/users/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email })
+  })
+  .then(res => res.text())
+  .then(msg => {
+    document.getElementById('msg').innerText = msg;
+    document.getElementById('updateUserForm').style.display = 'none';
+    loadUsers();
+  })
+  .catch(err => console.error('Error updating user:', err));
+}
+
+// Initial load
+loadUsers();
+</script>
+</body>
+</html>
